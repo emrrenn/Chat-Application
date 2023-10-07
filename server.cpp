@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define PORT 5555
 
@@ -37,15 +38,34 @@ int main() {
     //Accept a client connection
     int client_socket;
     struct sockaddr_in client_addr;
+    client_addr.sin_port = htons(PORT);
     socklen_t client_addr_len = sizeof(client_addr);
     client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_addr_len);
     if(client_socket == -1){
         std::cerr<<"Error accepting connection"<<std::endl;
         return -1;
     }
-    std::cout<<"Client connected"<<std::endl;
+    std::cout << "Accepted connection from " << inet_ntoa(client_addr.sin_addr) << ":" << ntohs(client_addr.sin_port) << std::endl;
 
+    //Chat with the Client
+    while(true){
+        char buffer[1024];
+        ssize_t  bytesRead = recv(client_socket, buffer, sizeof(buffer), 0);
+        buffer[bytesRead] = '\0';
+        std::cout << "Client: " << buffer << std::endl;
+
+        char message[1024];
+        std::cout << "Server: ";
+        std::cin.getline(message, sizeof(message));
+        if (strcmp(message, "exit") == 0) {
+            char exit_msg[] = "server ended the chat";
+            send(client_socket, exit_msg, strlen(exit_msg), 0);
+            break;
+        }
+        send(client_socket, message, strlen(message), 0);
+    }
     // Close the sockets
+    std::cout<<"CLosing sockets"<<std::endl;
     close(client_socket);
     close(server_socket);
     return 0;
